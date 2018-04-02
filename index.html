@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset=utf-8>
+    <title>My first three.js app</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%
+        }
+    </style>
+</head>
+
+<body>
+    <script src="three.min.js"></script>
+    <script src="OrbitControls.js"></script>
+    <script src="GLTFLoader.js"></script>
+	    <script src="DragControls.js"></script>
+		  <script src="TrackballControls.js"></script>
+		   <script src="stats.min.js"></script>
+		   		   <script src="dat.gui.js"></script>
+    <script>
+        const module = {
+
+            frame: 0,
+            cube: null,
+            camera: null,
+            renderer: null,
+            scene: null,
+            controls: null,
+            torus: null,
+            listener: null,
+            sound: null,
+            audioLoader: null,
+			objects:[],
+			stats:null,
+			xx:0,
+			yy:null,
+			zz:null,
+			arr:[],
+
+            init() {
+                
+                this.scene = new THREE.Scene();
+				
+                this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                this.clock = new THREE.Clock();
+                var loader = new THREE.FontLoader();
+
+                this.controls = new THREE.TrackballControls( this.camera );
+				this.controls.rotateSpeed = 1.5;
+				this.controls.zoomSpeed = 1.2;
+				this.controls.panSpeed = 1.0;
+				this.controls.noZoom = false;
+				this.controls.noPan = false;
+			    this.controls.staticMoving = true;
+				this.controls.dynamicDampingFactor = 0.3;
+
+
+
+
+                var renderer = new THREE.WebGLRenderer({
+                    antialias: true
+                });
+                renderer.shadowMap.enabled = true;
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                renderer.setClearColor("#a3a3a3");
+                this.renderer = renderer;
+
+                document.body.appendChild(renderer.domElement);
+				
+                this.setupEvents();
+                this.createLights();
+                this.createWorld();
+                this.addFlower();
+                this.addFlower2();
+				this.addKayak();
+				this.addLighthouse()
+				this.changeSelection();
+				this.stats = new Stats();
+                this.stats.showPanel( 0 ); 
+                document.body.appendChild( this.stats.dom );
+                var dc = new THREE.DragControls( this.arr, this.camera, this.renderer.domElement );
+				dc.addEventListener( 'dragstart', () =>   { this.controls.enabled = false; } );
+				dc.addEventListener( 'dragend', () =>   {this.controls.enabled = true; } );         
+                this.animate();
+            },
+
+
+            setupEvents() {
+                window.addEventListener('resize', () => {
+                    this.camera.aspect = window.innerWidth / window.innerHeight;
+                    this.camera.updateProjectionMatrix();
+                    this.renderer.setSize(window.innerWidth, window.innerHeight);
+                }, false);
+
+                this.raycaster = new THREE.Raycaster();
+                this.mouse = new THREE.Vector2();
+                this.selectedObj = null;
+                window.addEventListener('click', (event) => {
+                    this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+                    this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+                    this.raycaster.setFromCamera(this.mouse, this.camera);
+                    var intersects = this.raycaster.intersectObjects(this.scene.children, true);
+                    for (var i = 0; i < intersects.length; i++) {
+                       if (this.changeSelection(intersects[i].object)) break;;
+                    }
+                 }, false);
+
+            },
+
+            createWorld() {
+                var geometry = new THREE.PlaneGeometry(450, 450, 900);
+                var material = new THREE.MeshStandardMaterial({
+                    map: new THREE.TextureLoader().load('water.jpg'),
+                    normalMap: new THREE.TextureLoader().load('normwater.jpg'),
+                    side: THREE.DoubleSide,
+                    metalness: 0
+                });
+                this.skysphere = new THREE.Mesh(geometry, material);
+                this.skysphere.rotation.x = Math.PI / 2;
+                this.scene.add(this.skysphere);				
+                this.camera.position.z = 500;
+            },
+            addKayak() {
+                var loader = new THREE.GLTFLoader();
+                loader.load(
+                    'kayak.gltf',
+                    (gltf) => {
+                        this.scene.add(gltf.scene);
+                        gltf.scene.traverse(  (object) => {
+						    if ( object.isMesh ) this.arr.push( object );
+					    } );
+                        gltf.scene.scale.set(20, 20, 20);					
+						var x=-160;
+						var y=5;
+						var z= 150;
+                        gltf.scene.position.set(x, y, z);
+						gltf.scene.castShadow = true;
+                        gltf.scene.receiveShadow = true;	
+                    },
+                    null,
+                    null
+                );
+
+            },
+			
+			addLighthouse() {
+                var loader = new THREE.GLTFLoader();
+                loader.load(
+                    'lighthouse.gltf',
+                    (gltf) => {
+					    gltf.scene.traverse(  (object) => {
+					        if ( object.isMesh ) this.arr.push( object );
+					    } );
+		                gltf.scene.castShadow = true;
+                        gltf.scene.receiveShadow = true;
+                        this.scene.add(gltf.scene);                    
+                        gltf.scene.scale.set(800, 800, 800);
+                        gltf.scene.position.set(-120, 20, -50);
+                    },
+                    null,
+                    null
+                );
+            },
+            
+            
+            addFlower() {            
+               for (var i = 0; i < 15; i++) {
+                    var loader = new THREE.GLTFLoader();
+                    loader.load(
+                        'flower.gltf',
+                        (gltf) => { 
+                            gltf.scene.traverse(  (object) => {
+						        if ( object.isMesh ) this.arr.push( object );
+					        } );
+		                    gltf.scene.castShadow = true;
+                            gltf.scene.receiveShadow = true;
+                            gltf.scene.scale.set(8, 8, 8);
+                            gltf.scene.position.x = Math.random() * 200;
+                            gltf.scene.position.y = 0;
+                            gltf.scene.position.z = Math.random() * 200;
+                            this.scene.add(gltf.scene);
+                            this.objects.push(gltf.scene);
+                        },
+                        null,
+                        null
+                    );
+
+                }
+
+            },
+            addFlower2() {
+                for (var i = 0; i < 15; i++) {
+                    var loader = new THREE.GLTFLoader();
+                    loader.load(
+                        'flower2.gltf',
+                        (gltf) => {
+                            gltf.scene.traverse(  (object) => {
+                                if ( object.isMesh ) this.arr.push( object );
+                            } );
+                            gltf.scene.castShadow = true;
+                            gltf.scene.receiveShadow = true;
+                            gltf.scene.scale.set(3, 3, 3);
+                            gltf.scene.position.x = Math.random() * 200;
+                            gltf.scene.position.y = 0;
+                            gltf.scene.position.z = Math.random() * 200;
+                            this.scene.add(gltf.scene);
+                            this.objects.push(gltf.scene);
+                        },
+                        null,
+                        null
+                    );
+                }
+            },
+            createLights() {
+                var spotLight = new THREE.DirectionalLight(0xd1effc, 1, 1000000, 2);
+                spotLight.position.set(100, 100, 100);
+                spotLight.castShadow = true;
+                spotLight.penumbra = 0.1;
+                spotLight.shadow.mapSize.width = 512;
+                spotLight.shadow.mapSize.height = 512;
+                spotLight.shadow.camera.near = this.camera.near;
+                spotLight.shadow.camera.far = this.camera.far;
+                this.scene.add(new THREE.AmbientLight(0x404040));
+                this.scene.add(spotLight);
+            },
+            changeSelection(obj) {
+                if (obj != this.skysphere && this.selectedObj != obj) {
+                    if (this.selectedObj)
+                        this.selectedObj.material.color.set(new THREE.Color());
+                    this.selectedObj = obj;
+
+                    this.selectedObj.material.color.set('#DD3245'); 
+                 						var bbox = new THREE.Box3().setFromObject(obj);
+					var object3DWidth  = bbox.max.x - bbox.min.x;
+                    var object3DHeight = bbox.max.y - bbox.min.y;
+                    var object3DDepth  = bbox.max.z - bbox.min.z;
+                    console.log(object3DWidth,object3DHeight,object3DDepth );
+                    console.log(obj.name);
+					}
+                    return true;            
+            },
+
+            animate() {	
+                setTimeout( ()=> {
+	                this.stats.begin();
+	                this.stats.end();
+                    requestAnimationFrame( () => this.animate() );
+                    this.controls.update();
+                    this.renderer.render(this.scene, this.camera);
+                }, 1000 / 30 );
+            }
+        }
+        module.init();
+    </script>
+</body>
+</html>
